@@ -306,6 +306,27 @@
     ["sports", "Sport", "Countries where games twist, cut, or hit the knee"]
   ];
 
+  // Seven-continent school map. Antarctica has no site, so it is omitted.
+  // Koç University Hospital sits on the European side of Istanbul; Ankara and Samsun are in Anatolia.
+  var CONTINENTS = [
+    ["all", "All sites", "Every named Kaggle hospital"],
+    ["AF", "Africa", "Morocco"],
+    ["AS", "Asia", "Thailand, Taiwan, Mongolia, Ankara, and Samsun"],
+    ["EU", "Europe", "European hospitals, including Koç University Hospital in Istanbul"],
+    ["NA", "North America", "Canada and the United States"],
+    ["SA", "South America", "Argentina and Chile"],
+    ["OC", "Oceania", "Australia"]
+  ];
+
+  var COUNTRY_CONTINENT = {
+    MA: "AF",
+    TH: "AS", TW: "AS", MN: "AS", TR: "AS",
+    BE: "EU", BA: "EU", BG: "EU", HR: "EU", DE: "EU", GR: "EU", IT: "EU", MT: "EU",
+    CA: "NA", US: "NA",
+    AU: "OC",
+    AR: "SA", CL: "SA"
+  };
+
   // GBD 2021 knee OA prevalent cases + ASPR from Chen et al. 2025, PLOS One Table S1
   // (same GBD 2021 estimates cited by Wang/Ouyang et al. 2025). Not RSNA file counts.
   var TIPS = {
@@ -329,7 +350,7 @@
     BA: { cases: 188335, aspr: 3129, diet: "Balkan home cooking plus city shift", terrain: "Valley in mountains, winter snow", sport: "Football, some ski" }
   };
 
-  var state = { lens: "all", tab: "country", selectedId: "TH", selectedSite: "chiangmai", finding: "acl" };
+  var state = { lens: "all", continent: "all", tab: "country", selectedId: "TH", selectedSite: "chiangmai", finding: "acl" };
   var panel = document.getElementById("map-panel");
   var lensBar = document.getElementById("map-lenses");
   var hoverEl = document.getElementById("pin-hover");
@@ -403,8 +424,34 @@
     return COUNTRIES.find(function (c) { return c.id === state.selectedId; }) || COUNTRIES[0];
   }
 
-  function visible(c) {
-    return state.lens === "all" || c.lenses.indexOf(state.lens) !== -1;
+  function continentOf(site) {
+    if (site.id === "koc") return "EU";
+    return COUNTRY_CONTINENT[site.country];
+  }
+
+  function siteVisible(site) {
+    var c = countryOf(site);
+    if (!c) return false;
+    if (state.lens !== "all" && c.lenses.indexOf(state.lens) === -1) return false;
+    if (state.continent !== "all" && continentOf(site) !== state.continent) return false;
+    return true;
+  }
+
+  function countryInView(c) {
+    return sitesOf(c.id).some(function (s) {
+      return state.continent === "all" || continentOf(s) === state.continent;
+    });
+  }
+
+  function selectFirstVisible() {
+    var still = SITES.some(function (s) {
+      return s.id === state.selectedSite && siteVisible(s);
+    });
+    if (still) return;
+    var next = SITES.find(siteVisible);
+    if (!next) return;
+    state.selectedId = next.country;
+    state.selectedSite = next.id;
   }
 
   function pinIcon(site, on) {
@@ -452,17 +499,19 @@
     if (!next) return;
     state.selectedId = id;
     var inCountry = sitesOf(id);
-    if (siteId && inCountry.some(function (s) { return s.id === siteId; })) {
-      state.selectedSite = siteId;
-    } else if (!inCountry.some(function (s) { return s.id === state.selectedSite; })) {
-      state.selectedSite = inCountry[0] ? inCountry[0].id : state.selectedSite;
-    }
+    var shown = inCountry.filter(siteVisible);
+    var pick = null;
+    if (siteId && shown.some(function (s) { return s.id === siteId; })) pick = siteId;
+    else if (shown.some(function (s) { return s.id === state.selectedSite; })) pick = state.selectedSite;
+    else if (shown.length) pick = shown[0].id;
+    else if (siteId && inCountry.some(function (s) { return s.id === siteId; })) pick = siteId;
+    else if (inCountry[0]) pick = inCountry[0].id;
+    if (pick) state.selectedSite = pick;
     SITES.forEach(function (s) {
-      var c = countryOf(s);
       var marker = markers[s.id];
       if (!marker) return;
       marker.setIcon(pinIcon(s, s.id === state.selectedSite));
-      if (c && visible(c)) marker.addTo(map);
+      if (siteVisible(s)) marker.addTo(map);
       else map.removeLayer(marker);
     });
     var site = SITES.find(function (s) { return s.id === state.selectedSite; });
@@ -546,7 +595,7 @@
   }
 
   function rankedCountries(fid) {
-    return COUNTRIES.map(function (c) {
+    return COUNTRIES.filter(countryInView).map(function (c) {
       return { id: c.id, name: c.nameEn, score: findingScore(c, fid) };
     }).sort(function (a, b) {
       return b.score - a.score || a.name.localeCompare(b.name);
@@ -582,15 +631,16 @@
     var nLeast = rows.filter(function (r) { return r.score === least.score; }).length;
     var selectedRow = rows.find(function (r) { return r.id === selectedId; }) || rows[0];
     var rank = rows.findIndex(function (r) { return r.id === selectedId; }) + 1;
+    var n = rows.length;
     var mostTxt = most.score === least.score
-      ? "all 18 tied"
+      ? "all " + n + " tied"
       : (nMost > 1 ? nMost + " tied" : esc(most.name));
     var leastTxt = most.score === least.score
-      ? "all 18 tied"
+      ? "all " + n + " tied"
       : (nLeast > 1 ? nLeast + " tied" : esc(least.name));
     return (
       '<p class="oa-callout">' + flagImg(selectedId) + "<strong>" + esc(finding.name) + "</strong>&nbsp;·&nbsp;" +
-      esc(selectedRow.name) + " ranks " + rank + " of 18 &nbsp;·&nbsp; most " + mostTxt +
+      esc(selectedRow.name) + " ranks " + rank + " of " + n + " &nbsp;·&nbsp; most " + mostTxt +
       " &nbsp;·&nbsp; least " + leastTxt + ".</p>"
     );
   }
@@ -622,9 +672,12 @@
 
   function findingChart(selectedId) {
     var finding = FINDINGS.find(function (f) { return f.id === state.finding; }) || FINDINGS[0];
+    var scope = state.continent === "all"
+      ? "the 18 countries that host the 22 named Kaggle sites"
+      : "the countries shown for this continent";
     return (
       "<h3>12 findings by country</h3>" +
-      '<p class="atlas-lead">Pick a tab for one Kaggle label at a time. Bars are a teaching match from diet / terrain / sport notes for the 18 countries that host the 22 named Kaggle sites — not file counts, not GBD sub-labels, not how often the label appears in the 800,000+ files.</p>' +
+      '<p class="atlas-lead">Pick a tab for one Kaggle label at a time. Bars are a teaching match from diet / terrain / sport notes for ' + scope + ' — not file counts, not GBD sub-labels, not how often the label appears in the 800,000+ files.</p>' +
       '<div class="finding-tabs" role="tablist" aria-label="Twelve Kaggle findings">' + findingTabsHtml() + "</div>" +
       oneFindingChart(finding, selectedId)
     );
@@ -664,6 +717,18 @@
     lensBar.querySelectorAll(".atlas-chip").forEach(function (el) {
       el.classList.toggle("is-on", el.getAttribute("data-lens") === state.lens);
     });
+    if (continentBar) {
+      continentBar.querySelectorAll("[data-continent]").forEach(function (el) {
+        var on = el.getAttribute("data-continent") === state.continent;
+        el.classList.toggle("is-on", on);
+        el.setAttribute("aria-selected", on ? "true" : "false");
+      });
+      var row = CONTINENTS.find(function (item) { return item[0] === state.continent; });
+      var n = SITES.filter(function (s) {
+        return state.continent === "all" || continentOf(s) === state.continent;
+      }).length;
+      mapEl.setAttribute("aria-label", (row ? row[1] : "All sites") + ": " + n + " named Kaggle contributing sites");
+    }
     document.querySelectorAll(".atlas-tab").forEach(function (el) {
       el.classList.toggle("is-on", el.getAttribute("data-tab") === state.tab);
     });
@@ -673,18 +738,31 @@
     return '<button type="button" class="atlas-chip' + (pair[0] === "all" ? " is-on" : "") + '" data-lens="' + pair[0] + '" title="' + esc(pair[2]) + '">' + pair[1] + "</button>";
   }).join("");
 
+  var continentBar = document.createElement("div");
+  continentBar.className = "atlas-continents";
+  continentBar.setAttribute("role", "tablist");
+  continentBar.setAttribute("aria-label", "Continent");
+  mapEl.parentNode.appendChild(continentBar);
+  continentBar.innerHTML = CONTINENTS.map(function (row) {
+    var on = row[0] === "all";
+    return '<button type="button" class="atlas-chip' + (on ? " is-on" : "") + '" role="tab" data-continent="' + row[0] + '" aria-selected="' + on + '" title="' + esc(row[2]) + '">' + esc(row[1]) + "</button>";
+  }).join("");
+
   lensBar.addEventListener("click", function (e) {
     var btn = e.target.closest("[data-lens]");
     if (!btn) return;
     state.lens = btn.getAttribute("data-lens");
-    if (!visible(selected())) {
-      var first = COUNTRIES.find(visible);
-      if (first) {
-        state.selectedId = first.id;
-        state.selectedSite = sitesOf(first.id)[0] ? sitesOf(first.id)[0].id : state.selectedSite;
-      }
-    }
-    setSelected(state.selectedId, false);
+    selectFirstVisible();
+    setSelected(state.selectedId, false, state.selectedSite);
+  });
+
+  continentBar.addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-continent]");
+    if (!btn) return;
+    state.continent = btn.getAttribute("data-continent");
+    selectFirstVisible();
+    setSelected(state.selectedId, false, state.selectedSite);
+    frameMap();
   });
 
   document.querySelector(".atlas-tabs").addEventListener("click", function (e) {
@@ -749,10 +827,18 @@
     hoverEl.addEventListener("mouseleave", scheduleHide);
   }
 
-  var group = L.featureGroup(Object.values(markers));
   function frameMap() {
     map.invalidateSize();
-    map.fitBounds(group.getBounds().pad(0.18), { maxZoom: 3, animate: false });
+    var list = SITES.filter(siteVisible).map(function (s) { return markers[s.id]; }).filter(Boolean);
+    if (!list.length) return;
+    if (list.length === 1) {
+      map.setView(list[0].getLatLng(), 3, { animate: false });
+      return;
+    }
+    map.fitBounds(L.featureGroup(list).getBounds().pad(0.28), {
+      maxZoom: state.continent === "all" ? 3 : 4,
+      animate: false
+    });
   }
 
   render();
