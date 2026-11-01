@@ -55,14 +55,21 @@
   flex: 0 0 auto;
   height: auto;
   align-self: center;
-  padding: 4px 10px;
+  padding: 5px 12px;
+  line-height: 1.2;
+  color: var(--text-primary);
+  background: transparent;
 }
 .atlas-continents .atlas-chip b {
-  font-weight: 700;
-  color: var(--brand);
+  margin-left: 4px;
+  font-weight: 600;
+  color: inherit;
 }
+.atlas-toolbar .atlas-chip.is-on,
 .atlas-continents .atlas-chip.is-on {
-  background: rgba(0, 180, 216, 0.22);
+  background: var(--brand);
+  color: #f4fbfe;
+  border-color: var(--brand);
 }
 .atlas-legend {
   position: absolute;
