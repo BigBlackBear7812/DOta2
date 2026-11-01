@@ -3,7 +3,7 @@
 .atlas {
   display: grid;
   grid-template-columns: 1fr;
-  grid-template-rows: 460px auto;
+  grid-template-rows: auto 460px auto;
   height: auto;
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
@@ -44,10 +44,18 @@
   z-index: 2;
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  align-self: start;
   gap: 6px;
-  padding: 10px 12px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-surface);
+}
+.atlas-continents .atlas-chip {
+  flex: 0 0 auto;
+  height: auto;
+  align-self: center;
+  padding: 4px 10px;
 }
 .atlas-continents .atlas-chip b {
   font-weight: 700;
@@ -425,7 +433,7 @@
     min-height: 360px;
   }
   .atlas {
-    grid-template-rows: 360px auto;
+    grid-template-rows: auto 360px auto;
   }
   .atlas-legend {
     display: none;
