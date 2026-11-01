@@ -40,19 +40,18 @@
   border-color: var(--border);
 }
 .atlas-continents {
-  position: absolute;
-  z-index: 500;
-  top: 10px;
-  left: 52px;
-  right: 10px;
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  pointer-events: none;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-surface);
 }
-.atlas-continents .atlas-chip {
-  pointer-events: auto;
-  background: rgba(12, 22, 36, 0.92);
+.atlas-continents .atlas-chip b {
+  font-weight: 700;
+  color: var(--brand);
 }
 .atlas-continents .atlas-chip.is-on {
   background: rgba(0, 180, 216, 0.22);
@@ -430,10 +429,6 @@
   }
   .atlas-legend {
     display: none;
-  }
-  .atlas-continents {
-    left: 10px;
-    top: 58px;
   }
   .atlas-body {
     padding: 16px 16px 28px;
