@@ -309,7 +309,7 @@
   // Seven-continent school map. Antarctica has no site, so it is omitted.
   // Koç University Hospital sits on the European side of Istanbul; Ankara and Samsun are in Anatolia.
   var CONTINENTS = [
-    ["all", "All sites", "Every named Kaggle hospital"],
+    ["all", "World", "Every named Kaggle hospital"],
     ["AF", "Africa", "Morocco"],
     ["AS", "Asia", "Thailand, Taiwan, Mongolia, Ankara, and Samsun"],
     ["EU", "Europe", "European hospitals, including Koç University Hospital in Istanbul"],
@@ -727,7 +727,13 @@
       var n = SITES.filter(function (s) {
         return state.continent === "all" || continentOf(s) === state.continent;
       }).length;
-      mapEl.setAttribute("aria-label", (row ? row[1] : "All sites") + ": " + n + " named Kaggle contributing sites");
+      mapEl.setAttribute("aria-label", (row ? row[1] : "World") + ": " + n + " named Kaggle contributing sites");
+      var legend = document.querySelector(".atlas-legend");
+      if (legend) {
+        legend.textContent = state.continent === "all"
+          ? "World shows all 22 hospitals."
+          : row[1] + " shows " + n + (n === 1 ? " hospital." : " hospitals.");
+      }
     }
     document.querySelectorAll(".atlas-tab").forEach(function (el) {
       el.classList.toggle("is-on", el.getAttribute("data-tab") === state.tab);
@@ -738,14 +744,22 @@
     return '<button type="button" class="atlas-chip' + (pair[0] === "all" ? " is-on" : "") + '" data-lens="' + pair[0] + '" title="' + esc(pair[2]) + '">' + pair[1] + "</button>";
   }).join("");
 
+  function continentCount(id) {
+    return SITES.filter(function (s) {
+      return id === "all" || continentOf(s) === id;
+    }).length;
+  }
+
   var continentBar = document.createElement("div");
   continentBar.className = "atlas-continents";
   continentBar.setAttribute("role", "tablist");
   continentBar.setAttribute("aria-label", "Continent");
-  mapEl.parentNode.appendChild(continentBar);
+  var atlas = mapEl.closest(".atlas");
+  atlas.insertBefore(continentBar, atlas.firstChild);
   continentBar.innerHTML = CONTINENTS.map(function (row) {
     var on = row[0] === "all";
-    return '<button type="button" class="atlas-chip' + (on ? " is-on" : "") + '" role="tab" data-continent="' + row[0] + '" aria-selected="' + on + '" title="' + esc(row[2]) + '">' + esc(row[1]) + "</button>";
+    var n = continentCount(row[0]);
+    return '<button type="button" class="atlas-chip' + (on ? " is-on" : "") + '" role="tab" data-continent="' + row[0] + '" aria-selected="' + on + '" title="' + esc(row[2]) + '">' + esc(row[1]) + " <b>" + n + "</b></button>";
   }).join("");
 
   lensBar.addEventListener("click", function (e) {
@@ -835,8 +849,8 @@
       map.setView(list[0].getLatLng(), 3, { animate: false });
       return;
     }
-    map.fitBounds(L.featureGroup(list).getBounds().pad(0.28), {
-      maxZoom: state.continent === "all" ? 3 : 4,
+    map.fitBounds(L.featureGroup(list).getBounds().pad(0.35), {
+      maxZoom: state.continent === "all" ? 3 : 5,
       animate: false
     });
   }
